@@ -12,6 +12,7 @@ import time as time
 from multiprocessing import Pool
 from functools import reduce
 import plotting
+from collections import Counter
 
 PATH_TO_COINS_DATA = "../data/coinmarketcap_data/"
 
@@ -444,9 +445,14 @@ if __name__ == "__main__":
     starttime = time.time()
     coins_data, ico_dates = load_coin_data(PATH_TO_COINS_DATA)
     prices_df, volumes_df = build_price_and_volume_dataframe(coins_data)
+    print(prices_df.index.name)
     # print(prices_df, volumes_df)
     to_plot = ['BTC','DOGE','DASH','ETH']
     plotting.plot_cryptos(prices_df, to_plot)
+    plotting.plot_launches_per_year(ico_dates, prices_df)
+
+    # counter = Counter([date[:4] for date in ico_dates.values()])
+    # print(counter)
     # print(prices_df.loc[prices_df['XRP'].isna() == False, 'XRP'])
     # # Generate a dataframe with returns
     # returns = df.pct_change()

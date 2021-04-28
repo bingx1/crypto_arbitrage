@@ -3,6 +3,7 @@ import pandas as pd
 from matplotlib import pyplot as plt
 import matplotlib.dates as mdates
 from datetime import datetime
+from collections import Counter
 
 def plot_timeline(dates, symbols, title):
  # Choose some nice levels
@@ -46,39 +47,36 @@ def plot_cryptos(coins: pd.DataFrame, coins_to_plot: list):
     passed cryptocurrencies.
     '''
     fig, ax = plt.subplots(figsize=(10, 8))
-    dates = [datetime(2013,1,1),datetime(2014,1,1),datetime(2015,1,1), datetime(2016,1,1),datetime(2017,1,1), datetime(2018,1,1), datetime(2019,1,1)]
-
     axes = [plt.subplot2grid((2,2),(0,0)), plt.subplot2grid((2,2),(0,1)), 
             plt.subplot2grid((2,2),(1,0)), plt.subplot2grid((2,2),(1,1))]
-
+        
     for axis, coin in zip(axes, coins_to_plot):
         coin_data = coins.loc[coins[coin].isna()==False, coin]
         axis.plot(coin_data)
         axis.set_title('{}:USD'.format(coin),fontsize=10)
         axis.get_xaxis().set_major_formatter(mdates.DateFormatter("%Y"))
         axis.set_xlim(np.datetime64('2013-01'), np.datetime64('2019-01'))
-        # axis.set_xticks(dates)
-    # fig.autofmt_xdate()
     fig.suptitle(str(coins_to_plot).strip('[]')  + ' USD Pairs 2013-2019',fontsize=14)
     plt.show()
 
 
-def plot_launches_per_year(years, df):
+def plot_launches_per_year(ico_dates: dict, df: pd.DataFrame):
     '''
-
-    :param years:     # Plot the number of currencies launched in each year
-    :param df: dataframe of all the price data
-    :return: nothing, just a diagram
+    Plots the number of cryptocurrencies launched in each year, and the number of cryptocurrencies
+    in active circulation (per this dataset) in each year.
     '''
+    counter = Counter([date[:4] for date in ico_dates.values()])    
+    
     fig, ax = plt.subplots(figsize=(10, 4))
     line_ax = plt.subplot2grid((1, 2), (0, 0))
     bar_ax = plt.subplot2grid((1, 2), (0, 1))
-    bar_ax.bar(years.keys(),years.values(),color='g',edgecolor='k')
+    bar_ax.bar(counter.keys(),counter.values(),color='g',edgecolor='k')
     plt.title('# of Cryptocurrency launches by year', fontsize=14)
     df['Active'].plot(ax=line_ax, color='g')
     line_ax.set_title('Active Cryptocurrencies',fontsize=14)
     line_ax.set_xlabel('')
-    return
+    plt.show()
+
 
 def plot_coin(df, coin):
     fig, ax = plt.subplots(figsize=(10, 4))
