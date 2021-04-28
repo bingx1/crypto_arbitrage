@@ -12,7 +12,7 @@ from sklearn.preprocessing import StandardScaler
 from functools import reduce
 
 PATH_TO_STOCKS_DATA = "../data/stocks/individual_stocks_5yr"
-
+PATH_TO_SP500_DATA = "../data/coinmetrics_data/sp500.csv"
 
 def load_stock_data(fpath: str) -> list:
     '''
@@ -38,7 +38,7 @@ def build_returns_dataframe(stock_prices: list) -> pd.DataFrame:
     returns.drop(df.head(1).index, inplace=True)
     before = returns.shape
     returns = returns.dropna(axis = 1)
-    print("Dropped columns with NaNs, ", before, " -> ", returns.shape)
+    print("READING IN STOCK DATA - Dropped columns with NaNs, ", before, " -> ", returns.shape)
     return returns
 
 
@@ -66,38 +66,43 @@ def perform_pca(returns_df: pd.DataFrame, n):
         returns_df[pc] = np.sum(returns_df[stocks].multiply(eigenportfolios[pc].to_list()),axis=1)/np.sqrt(eigenvalues[i-1])
     return returns_df
 
-
-# valid = returns.columns
-# s = returns.std(ddof=1, axis=0)
-# # PCA
-# sample2 = StandardScaler().fit_transform(returns)
-# # Call PCA function to do PCA
-# pcs = ['PC{}'.format(i) for i in range(1,len(returns.columns)+1)]
-# pca = PCA(n_components=len(returns.columns))
-# pca2 = pca.fit_transform(sample2)
-# eigenvalues = pca.explained_variance_
-# pcdf = pd.DataFrame(pca.components_, columns=pcs, index=returns.columns)
-# # Divide rows by STDEV of each coin return to get eigen portfolio weights
-# eig_portfolios = pcdf.div(s, axis=0)
-# # Eigen portfolio's are the columns. Add returns for each eigen portfolio of interest to pca_data
-# for i in range (1,15+1):
-#     pc = 'PC{}'.format(i)
-#     returns[pc] = np.sum(returns[valid].multiply(eig_portfolios[pc].to_list()),axis=1)/np.sqrt(eigenvalues[i-1])
-# sp500 = pd.read_csv(r"C:\Users\Bing\Documents\NumTech Ass 2\Coinmetrics data\sp500.csv")
-# sp500.index = pd.to_datetime(sp500['date'])
-# sp500.pop('date')
-# join = pd.concat([returns['PC1'],sp500.pct_change()],axis=0)
-# join = join.rename(columns={0:'PC1','value':'SP500'})
-# fig, ax = plt.subplots(figsize=(10, 4))
-# return_ax = plt.subplot2grid((1, 2), (0, 0))
-# eig_ax = plt.subplot2grid((1, 2), (0, 1))
-# sp500 = sp500.pct_change()
-# sp500.loc[(sp500.index >= datetime(2013,2,11)) & (sp500.index <= datetime(2018,2,7))].plot(ax=return_ax, title='Returns on Index')
-# returns['PC1'].plot(ax=eig_ax, title='Returns on PC1')
+def load_sp500data(fpath: str) -> pd.DataFrame:
+    sp500 = pd.read_csv(fpath)
+    sp500.index = pd.to_datetime(sp500['date'])
+    sp500.pop('date')
+    sp500 = sp500.pct_change()
+    return sp500
 
 
-if __name__ == "__main__":
+# Not used.
+def add_sp500data(returns_df: pd.DataFrame, fpath: str) -> pd.DataFrame:
+    sp500_df = load_sp500data(fpath)
+    join = pd.concat([returns_df['PC1'], sp500_df],axis=0)
+    join = join.rename(columns={0:'PC1','value':'SP500'})
+    return join
+
+
+
+def plot_and_compare(returns_df: pd.DataFrame, sp500_df: pd.DataFrame):
+    fig, ax = plt.subplots(figsize=(10, 4))
+    return_ax = plt.subplot2grid((1, 2), (0, 0))
+    eig_ax = plt.subplot2grid((1, 2), (0, 1))
+    first_date = np.datetime64(returns_df.index[0].date())
+    last_date = np.datetime64(returns_df.index[-1].date())
+    print("PLOTTING - Comparing returns for the period from ", first_date, " to ", last_date)
+    sp500_df = sp500_df.loc[(sp500_df.index >= first_date) & (sp500_df.index <= last_date)].plot(ax=return_ax, title='Returns on Index')
+    returns_df['PC1'].plot(ax=eig_ax, title='Returns on PC1')
+
+
+def main():
+    # Application entrypoint
     stock_data = load_stock_data(PATH_TO_STOCKS_DATA)
     returns_df = build_returns_dataframe(stock_data)
     returns_df = perform_pca(returns_df, 15)
     print(returns_df.head())
+    sp500_df = load_sp500data(PATH_TO_SP500_DATA)
+    plot_and_compare(returns_df, sp500_df)
+
+
+if __name__ == "__main__":
+    main()
