@@ -13,6 +13,7 @@ from multiprocessing import Pool
 from functools import reduce
 import plotting
 from collections import Counter
+from strategy import make_sample
 
 PATH_TO_COINS_DATA = "../data/coinmarketcap_data/"
 
@@ -68,38 +69,7 @@ def build_price_and_volume_dataframe(coins_data: pd.DataFrame):
     # return df, vol_df
 
 
-# ================= ANALYSIS OF THE SAMPLE ============================
-def get_sample(startdate, df, vol_df, volume, length, pcawindow):
-    '''
-    :param startdate: first day of sample
-    :param df: entire returns dataframe
-    :param vol_df:  entire volume dataframe
-    :param liquidity: volume/liquidity requirement throughout the sample
-    :param length: length of the sample
-    :param pcawindow: trailing window to conduct PCA
-    :return: the sample returns data
-    '''
-    enddate = startdate + timedelta(days=length)
-    earliest_date = startdate - timedelta(days=pcawindow)
-    # Create the sample, dropping the 'active' column
-    sample = df.loc[(df.index >= startdate) & (df.index <= enddate)].dropna(axis=1).copy().drop('Active',axis=1)
-    print ('Dataset contains price data for {} coins between {} and {}'.format(len(sample.columns),startdate.date(), enddate.date()))
-    # Check which coins in the sample have traded for 1 > year since the beginning of the sample period
-    valid = df.loc[df.index == earliest_date].dropna(axis=1).columns.to_list()
-    print ('Of these, {} have traded since {}'.format(len(valid), earliest_date.date()))
-    # Drop coins that haven't traded for 365 days prior to start of sample
-    sample = sample.drop([coin for coin in sample.columns if coin not in valid],axis=1)
-    # Report coins that satisfy some volume constraint throughout the whole sample period
-    store = []
-    for coin in sample.columns:
-        validdata = np.sum(vol_df.loc[(vol_df.index >= startdate) & (vol_df.index <= enddate),coin] > volume)
-        store.append(validdata)
-    vol_check = pd.DataFrame(store, index=sample.columns,columns = ['Valid'])
-    active = [tick for tick in sample.columns if vol_check.loc[tick]['Valid'] == vol_check.max()['Valid']]
-    print ('Out of {} coins, daily volume is > {} between {} and {} for {} of them.'.format
-           (len(sample.columns),volume,startdate.date(),enddate.date(),len(active)))
-    sample = sample.drop([coin for coin in sample.columns if coin not in active],axis=1)
-    return sample, active
+
 
 # --------------------------Make eigenportfolios------------------------------------------
 def do_pca(date, dataframe, pcawindow, PCS, active, plot = False):
@@ -441,43 +411,47 @@ def returns_to_profits(series, value=100):
 # eth = eth.pct_change()
 # eth.name = 'ETH'
 
+
+def plot(prices_df, ico_dates):
+    '''
+    Plots some graphs related to the passed data.
+    '''
+    to_plot = ['BTC','DOGE','DASH','ETH']
+    plotting.plot_cryptos(prices_df, to_plot)
+    plotting.plot_launches_per_year(ico_dates, prices_df)
+    plotting.plot_timeline(ico_dates)
+
 if __name__ == "__main__":
     starttime = time.time()
     coins_data, ico_dates = load_coin_data(PATH_TO_COINS_DATA)
     prices_df, volumes_df = build_price_and_volume_dataframe(coins_data)
-    print(prices_df.index.name)
-    # print(prices_df, volumes_df)
-    to_plot = ['BTC','DOGE','DASH','ETH']
-    # plotting.plot_cryptos(prices_df, to_plot)
-    # plotting.plot_launches_per_year(ico_dates, prices_df)
-    plotting.plot_timeline(ico_dates)
-    # counter = Counter([date[:4] for date in ico_dates.values()])
-    # print(counter)
-    # print(prices_df.loc[prices_df['XRP'].isna() == False, 'XRP'])
-    # # Generate a dataframe with returns
-    # returns = df.pct_change()
-    # returns.index.name = 'Date'
-    # # ========= PARAMETERS ============
-    # PCA_window = 160
-    # regression_window = 50
-    # pc_interval = 60
-    # PCS = 5
-    # volume = 10000
-    # sample_window = 365 #147
-    # base_capital = 10000
 
-    # startdate = datetime(2018,1,1) # Choose the time period of the sample
-    # sample, active = get_sample(startdate, returns, vol_df, volume, sample_window, PCA_window) # Get the sample
+    # Generate a dataframe with returns
+    returns = prices_df.pct_change()
+    returns.index.name = 'Date'
+    print(returns.shape)
+    # ========= PARAMETERS ============
+    PCA_window = 160
+    regression_window = 50
+    pc_interval = 60
+    PCS = 5
+    volume = 1000000
+    sample_window = 365 #147
+    base_capital = 10000
+    startdate = datetime(2018,1,1) # Choose the time period of the sample
+    sample = make_sample(returns, volumes_df, startdate, volume, sample_window, PCA_window)
+    print(sample)                 
     # capital_portion = base_capital / len(active)
-    # dic = {}
-    # dict2 = {}
-    # # plot_portfolio_composition(r"C:\Users\Bing\Documents\NumTech Ass 2\S-score results\In sample\160 50 5 S_scores.csv")
-    # # eigportfolios, eigvals = do_pca(startdate, returns, PCA_window, PCS, active)
-    # #     # eig_returns = get_eigenportfolio_returns(eigportfolios, eigvals, returns, active, datetime(2019,1,1))
-    # #     # a = eigportfolios['PC2'].sort_values(ascending=False)
-    # #     # plt.figure(3)
-    # #     # plt.bar(a[:20].index, a[:20], width=0.5, color='slategrey', edgecolor='k')
-    # #     # plt.title('Second Eigenvector')
+
+    # plot_portfolio_composition(r"C:\Users\Bing\Documents\NumTech Ass 2\S-score results\In sample\160 50 5 S_scores.csv")
+    # eigportfolios, eigvals = do_pca(startdate, returns, PCA_window, PCS, active)
+    # eig_returns = get_eigenportfolio_returns(eigportfolios, eigvals, returns, active, datetime(2019,1,1))
+    # a = eigportfolios['PC2'].sort_values(ascending=False)
+    # plt.figure(3)
+    # plt.bar(a[:20].index, a[:20], width=0.5, color='slategrey', edgecolor='k')
+    # plt.title('Second Eigenvector')
+    # plt.show()
+
     # storage = backtest(PCA_window, regression_window, sample_window, PCS, returns, active, startdate, pc_interval)
     # results = save_regression_results(storage, sample, PCA_window, regression_window, PCS, save=False)
     # PnL = get_PnL(results)

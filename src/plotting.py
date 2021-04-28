@@ -4,6 +4,7 @@ from matplotlib import pyplot as plt
 import matplotlib.dates as mdates
 from datetime import datetime
 from collections import Counter
+import sklearn
 
 def plot_timeline(ico_dates: dict):
  
@@ -105,3 +106,17 @@ def compare_plot(ind,ep):
     combined[ind.name].plot(ax=return_ax, title='Returns on {} Cryto Index'.format(ind.name),color='cornflowerblue')
     combined[ep.name].plot(ax=eig_ax, title='Returns on Eigenportfolio {}'.format(ep.name),color='cornflowerblue')
     return
+
+def plot_pca(pca: sklearn.decomposition.PCA, PCS: int):
+    exp_var = pca.explained_variance_ratio_
+    cum_expvar = np.cumsum(exp_var)
+    # plot variance explained graph
+    print ('First principal component explains {} of the variance'.format(round(exp_var[0],4)))
+    print ('Var explained by the 1st {} components:{}'.format(PCS,round(cum_expvar[-1],4)))
+    plt.figure(5)
+    plt.bar(['PC {}'.format(i) for i in range(1,PCS+1)], exp_var, color='lightsteelblue', edgecolor='k', width=0.6)
+    plt.xticks(['PC {}'.format(i) for i in range(1,PCS+1)], rotation= 0)
+    plt.plot(['PC {}'.format(i) for i in range(1,PCS+1)], cum_expvar, ls='--', color='cornflowerblue')
+    plt.legend(['Cumulative variance explained','Proportion of variance explained'],fontsize=7)
+    plt.title('Variance explained by PC 1 - PC {}'.format(PCS),fontsize = 13)
+    plt.show()
