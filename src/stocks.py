@@ -32,7 +32,8 @@ def build_returns_dataframe(stock_prices: list) -> pd.DataFrame:
     Converts the list of stock prices into a single pandas dataframe containing returns.
     Also cleans the pandas dataframe by removing missing values.
     '''
-    df = reduce(lambda left, right: pd.merge(left, right, left_index=True, right_index=True, how='outer'), stock_prices)
+    # df = reduce(lambda left, right: pd.merge(left, right, left_index=True, right_index=True, how='outer'), stock_prices)
+    df = pd.concat(stock_prices, axis = 1)
     returns = df.pct_change()
     returns.drop(df.head(1).index, inplace=True)
     before = returns.shape

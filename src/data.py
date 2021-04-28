@@ -10,12 +10,13 @@ from sklearn.preprocessing import StandardScaler
 import statsmodels.api as sm
 import time as time
 from multiprocessing import Pool
+from functools import reduce
 
 PATH_TO_COINS_DATA = "../data/coinmarketcap_data/"
 
 
 def clean_coin_data(coin_data: pd.DataFrame) -> None:
-    coin_data['time'] = pd.to_datetime(coin_data['time'])
+    # coin_data['time'] = pd.to_datetime(coin_data['time'])
     coin_data.index = pd.to_datetime(coin_data['time'])
 
 def load_coin_data(path:str):
@@ -29,7 +30,7 @@ def load_coin_data(path:str):
     for filename in glob.glob(os.path.join(path, '*.csv')):
         fname = filename.split('/')[-1]
         ticker = fname.split('.')[0]
-        print(ticker)
+        # print(ticker)
         coin_data = pd.read_csv(filename)
     #     clean up the data
         clean_coin_data(coin_data)
@@ -43,33 +44,48 @@ def load_coin_data(path:str):
             ico_dates[ticker] = coin_data.iloc[0]['time']
     return coins_data, ico_dates
 
+
 def build_price_and_volume_dataframe(coins_data: pd.DataFrame):
     '''
     Builds a price dataframe and a volume dataframe
     '''
+    prices = pd.concat([df["close"].rename(df.name) for df in coins_data], axis = 1)
+    volumes = pd.concat([df["volumeto"].rename(df.name) for df in coins_data], axis = 1)
+    # print(prices)
+    # concat = pd.concat(prices, axis=1)
+    print(prices)
+    print(volumes)
+    # prices_df = combine_and_make_dataframe(prices)
+    # volume_df = combine_and_make_dataframe(volumes)
+    # print(prices_df.head())
+    # print(volume_df.head())
+    # print(prices, volumes)
 
-    # build price and volume dataframe for all coins n
-    df = coins['BTC'][['close']].copy()
-    df = df.rename(columns={'close': 'BTC'})
-    vol_df = coins['BTC'][['volumeto']].copy()
-    vol_df = vol_df.rename(columns={'volumeto': 'BTC'})
-    for coin in coins:
-        if coin == 'BTC':
-            pass
-        # put all other coins into dataframe
-        else:
-            df[coin] = coins[coin]['close']
-            vol_df[coin] = coins[coin]['volumeto']
-    # INSERT column 'Active' into dataframe to count active coins at each date
-    df['Active'] = df.count(axis=1)
-    # if tl_plt:
-    #      plot_timeline(dates,symbols,'2013-2019 Cryptocurrency ICO Dates')
-    # if len(coins_plt) > 0:
-    #     # Plot the prices of 4 coins
-    #     plot_cryptos(coins,coins_plt[0],coins_plt[1],coins_plt[2],coins_plt[3])
-    # if peryear_plt:
-    #     plot_launches_per_year(years, df)
-    return df, vol_df
+    # # build price and volume dataframe for all coins n
+    # df = coins['BTC'][['close']].copy()
+    # df = df.rename(columns={'close': 'BTC'})
+    # vol_df = coins['BTC'][['volumeto']].copy()
+    # vol_df = vol_df.rename(columns={'volumeto': 'BTC'})
+    # for coin in coins:
+    #     if coin == 'BTC':
+    #         pass
+    #     # put all other coins into dataframe
+    #     else:
+    #         df[coin] = coins[coin]['close']
+    #         vol_df[coin] = coins[coin]['volumeto']
+
+
+
+    # # INSERT column 'Active' into dataframe to count active coins at each date
+    # df['Active'] = df.count(axis=1)
+    # # if tl_plt:
+    # #      plot_timeline(dates,symbols,'2013-2019 Cryptocurrency ICO Dates')
+    # # if len(coins_plt) > 0:
+    # #     # Plot the prices of 4 coins
+    # #     plot_cryptos(coins,coins_plt[0],coins_plt[1],coins_plt[2],coins_plt[3])
+    # # if peryear_plt:
+    # #     plot_launches_per_year(years, df)
+    # return df, vol_df
 
 
 # ================= ANALYSIS OF THE SAMPLE ============================
@@ -448,7 +464,9 @@ def returns_to_profits(series, value=100):
 if __name__ == "__main__":
     starttime = time.time()
     coins_data, ico_dates = load_coin_data(PATH_TO_COINS_DATA)
-    print(coins_data, ico_dates)
+    # print(coins_data, ico_dates)
+    build_price_and_volume_dataframe(coins_data)
+
     # # Generate a dataframe with returns
     # returns = df.pct_change()
     # returns.index.name = 'Date'
