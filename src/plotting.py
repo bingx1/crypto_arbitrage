@@ -49,14 +49,14 @@ def plot_cryptos(coins: pd.DataFrame, coins_to_plot: list):
     fig, ax = plt.subplots(figsize=(10, 8))
     axes = [plt.subplot2grid((2,2),(0,0)), plt.subplot2grid((2,2),(0,1)), 
             plt.subplot2grid((2,2),(1,0)), plt.subplot2grid((2,2),(1,1))]
-        
+
     for axis, coin in zip(axes, coins_to_plot):
         coin_data = coins.loc[coins[coin].isna()==False, coin]
         axis.plot(coin_data)
         axis.set_title('{}:USD'.format(coin),fontsize=10)
         axis.get_xaxis().set_major_formatter(mdates.DateFormatter("%Y"))
-        axis.set_xlim(np.datetime64('2013-01'), np.datetime64('2019-01'))
-    fig.suptitle(str(coins_to_plot).strip('[]')  + ' USD Pairs 2013-2019',fontsize=14)
+        axis.set_xlim(coins.index[0], coins.index[-1])
+    fig.suptitle(str(coins_to_plot).strip('[]')  + ' USD Pairs ' + str(coins.index[0].year) + '-' + str(coins.index[-1].year),fontsize=14)
     plt.show()
 
 
@@ -65,12 +65,12 @@ def plot_launches_per_year(ico_dates: dict, df: pd.DataFrame):
     Plots the number of cryptocurrencies launched in each year, and the number of cryptocurrencies
     in active circulation (per this dataset) in each year.
     '''
-    counter = Counter([date[:4] for date in ico_dates.values()])    
-    
+    counter = Counter([date[:4] for date in ico_dates.values()])
+    in_order = sorted(counter.items())
     fig, ax = plt.subplots(figsize=(10, 4))
     line_ax = plt.subplot2grid((1, 2), (0, 0))
     bar_ax = plt.subplot2grid((1, 2), (0, 1))
-    bar_ax.bar(counter.keys(),counter.values(),color='g',edgecolor='k')
+    bar_ax.bar([i[0] for i in in_order],[i[1] for i in in_order],color='g',edgecolor='k')
     plt.title('# of Cryptocurrency launches by year', fontsize=14)
     df['Active'].plot(ax=line_ax, color='g')
     line_ax.set_title('Active Cryptocurrencies',fontsize=14)
