@@ -120,3 +120,10 @@ def plot_pca(pca: sklearn.decomposition.PCA, PCS: int):
     plt.legend(['Cumulative variance explained','Proportion of variance explained'],fontsize=7)
     plt.title('Variance explained by PC 1 - PC {}'.format(PCS),fontsize = 13)
     plt.show()
+
+def plot_eigenportfolio(eigen_portfolios: pd.DataFrame, to_plot: int):
+    a = eigen_portfolios[f'PC{to_plot}'].sort_values(ascending=False)
+    plt.figure(3)
+    plt.bar(a[:20].index, a[:20], width=0.5, color='slategrey', edgecolor='k')
+    plt.title(f'Eigenvector {to_plot}')
+    plt.show()

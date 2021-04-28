@@ -13,7 +13,7 @@ from multiprocessing import Pool
 from functools import reduce
 import plotting
 from collections import Counter
-from strategy import make_sample, do_pca, get_eigenportfolio_returns
+from strategy import make_sample, do_pca, get_eigenportfolio_returns, backtest
 
 PATH_TO_COINS_DATA = "../data/coinmarketcap_data/"
 
@@ -316,30 +316,30 @@ def retrieve_s_score(x):
     m, sigma_eq = build_s_score(a, b, resid_var, PCA_window)
     return m, sigma_eq
 
-def backtest(PCA_window, regression_window, sample_window, PCS, returns, active, startdate, pc_interval):
-    storage = {}
-    pool = Pool(os.cpu_count())
-    # Iterate over the sample period and get s scores:
-    for i in range(sample_window+1):
-        date = startdate + timedelta(days=i)
-        # Recompute eigenportfolios every 60 days
-        if i%pc_interval == 0:
-            eigportfolios, eigvals= do_pca(date, returns, PCA_window, PCS, active) #Recompute eigenportfolios every 60 days
-        eig_returns = get_eigenportfolio_returns(eigportfolios, eigvals, returns, active, date)
-        pool_input = []
-        for coin in active:
-            if i == 0:
-                storage[coin] = []
-            pool_input.append((eig_returns, returns[coin],date,regression_window,PCA_window))
-        out = pool.map(retrieve_s_score,pool_input) #a list of tuples, with m and sigma_eq
-        all_m = [i[0] for i in out if i!=0]
-        all_sigmas = [y[1] for y in out]
-        avg_m = np.sum(all_m)/len(all_m)
-        modified_m = [s_score[0] - avg_m for s_score in out]
-        adjusted_s_scores = [-m/sigma for m,sigma in zip(modified_m, all_sigmas)]
-        for count, coin in enumerate(active):
-            storage[coin].append(adjusted_s_scores[count])
-    return storage
+# def backtest(PCA_window, regression_window, sample_window, PCS, returns, active, startdate, pc_interval):
+#     storage = {}
+#     pool = Pool(os.cpu_count())
+#     # Iterate over the sample period and get s scores:
+#     for i in range(sample_window+1):
+#         date = startdate + timedelta(days=i)
+#         # Recompute eigenportfolios every 60 days
+#         if i%pc_interval == 0:
+#             eigportfolios, eigvals= do_pca(date, returns, PCA_window, PCS, active) #Recompute eigenportfolios every 60 days
+#         eig_returns = get_eigenportfolio_returns(eigportfolios, eigvals, returns, active, date)
+#         pool_input = []
+#         for coin in active:
+#             if i == 0:
+#                 storage[coin] = []
+#             pool_input.append((eig_returns, returns[coin],date,regression_window,PCA_window))
+#         out = pool.map(retrieve_s_score,pool_input) #a list of tuples, with m and sigma_eq
+#         all_m = [i[0] for i in out if i!=0]
+#         all_sigmas = [y[1] for y in out]
+#         avg_m = np.sum(all_m)/len(all_m)
+#         modified_m = [s_score[0] - avg_m for s_score in out]
+#         adjusted_s_scores = [-m/sigma for m,sigma in zip(modified_m, all_sigmas)]
+#         for count, coin in enumerate(active):
+#             storage[coin].append(adjusted_s_scores[count])
+#     return storage
 
 def get_PnL(results, plot = False):
     ''''''
@@ -351,24 +351,6 @@ def get_PnL(results, plot = False):
         cum_return.plot()
         plt.title('Cumulative portfolio return over time')
     return cum_return
-
-def save_regression_results(storage, sample, pca_window, reg_window, pcs, save=False):
-    '''
-    :param storage: the output from a backtest, s-score dictionary
-    :param sample: the sample used
-    :param pca_window: length of window used for PCA
-    :param reg_window: length of window used for regressions
-    :param pcs:  number of pcs
-    :return: saved csv file
-    '''
-    start = datetime.strftime(sample.iloc[0].name.date(),'%Y-%m-%d')
-    end = datetime.strftime(sample.iloc[-1].name.date(),'%Y-%m-%d')
-    s_results = pd.DataFrame.from_dict(storage, orient='index').transpose()
-    s_results.index = sample.index
-    s_results.index.name = 'Date'
-    if save:
-        s_results.to_csv(r'C:\Users\Bing\Documents\NumTech Ass 2\S-score results\{} - {} {} {} {} S_scores.csv'.format(start, end, pca_window, reg_window, pcs))
-    return s_results
 
 def plot_portfolio_composition(path):
     '''
@@ -439,26 +421,20 @@ if __name__ == "__main__":
     sample_window = 365 #147
     base_capital = 10000
     startdate = datetime(2018,1,1) # Choose the time period of the sample
-    sample = make_sample(returns, volumes_df, startdate, volume, sample_window, PCA_window)
-    print(sample)                 
-    # capital_portion = base_capital / len(active)
+    sample = make_sample(returns, volumes_df, startdate, volume, sample_window, PCA_window)                
+
+    eigen_portfolios, eigen_vals = do_pca(startdate, sample, PCA_window, PCS)
+    eig_returns = get_eigenportfolio_returns(datetime(2019,1,1), sample, eigen_portfolios, eigen_vals, PCS)
+
+    output = backtest(PCA_window, regression_window, sample_window, PCS, sample, startdate, pc_interval)
+
+    print(output)
 
     # plot_portfolio_composition(r"C:\Users\Bing\Documents\NumTech Ass 2\S-score results\In sample\160 50 5 S_scores.csv")
-    eigen_portfolios, eigen_vals = do_pca(startdate, sample, PCA_window, PCS)
-    print(eigen_portfolios)
-    eig_returns = get_eigenportfolio_returns(datetime(2019,1,1), sample, eigen_portfolios, eigen_vals, PCS)
-    print(eig_returns)
-    # (eigen_portfolios, eigen_vals, returns, active, datetime(2019,1,1))
-    
-    # a = eigportfolios['PC2'].sort_values(ascending=False)
-    # plt.figure(3)
-    # plt.bar(a[:20].index, a[:20], width=0.5, color='slategrey', edgecolor='k')
-    # plt.title('Second Eigenvector')
-    # plt.show()
 
-    # storage = backtest(PCA_window, regression_window, sample_window, PCS, returns, active, startdate, pc_interval)
-    # results = save_regression_results(storage, sample, PCA_window, regression_window, PCS, save=False)
+
     # PnL = get_PnL(results)
+    # capital_portion = base_capital / len(active)
     # portfolio_returns = results.apply(scores_to_returns, axis=0)
     # portfolio_returns.iloc[0] = capital_portion
     # portfolio_returns = portfolio_returns.apply(np.cumprod, axis=0)
