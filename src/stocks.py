@@ -1,15 +1,14 @@
 import pandas as pd
-from pandas.core.indexes.base import Index
 import numpy as np
+import matplotlib
 from matplotlib import pyplot as plt
-import matplotlib.dates as mdates
-from datetime import datetime
-from datetime import timedelta
 import os
 import glob
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 from functools import reduce
+
+matplotlib.use('TkAgg')
 
 PATH_TO_STOCKS_DATA = "../data/stocks/individual_stocks_5yr"
 PATH_TO_SP500_DATA = "../data/coinmetrics_data/sp500.csv"
@@ -67,6 +66,9 @@ def perform_pca(returns_df: pd.DataFrame, n):
     return returns_df
 
 def load_sp500data(fpath: str) -> pd.DataFrame:
+    '''
+    Reads in the S&P500 daily price data and returns a pandas dataframe.
+    '''
     sp500 = pd.read_csv(fpath)
     sp500.index = pd.to_datetime(sp500['date'])
     sp500.pop('date')
@@ -84,7 +86,10 @@ def add_sp500data(returns_df: pd.DataFrame, fpath: str) -> pd.DataFrame:
 
 
 def plot_and_compare(returns_df: pd.DataFrame, sp500_df: pd.DataFrame):
-    fig, ax = plt.subplots(figsize=(10, 4))
+    '''
+    Plots the daily returns from the first eigenportfolio next to the returns of the S&P500.
+    '''
+    # fig, ax = plt.subplots(figsize=(10, 4))
     return_ax = plt.subplot2grid((1, 2), (0, 0))
     eig_ax = plt.subplot2grid((1, 2), (0, 1))
     first_date = np.datetime64(returns_df.index[0].date())
@@ -92,10 +97,14 @@ def plot_and_compare(returns_df: pd.DataFrame, sp500_df: pd.DataFrame):
     print("PLOTTING - Comparing returns for the period from ", first_date, " to ", last_date)
     sp500_df = sp500_df.loc[(sp500_df.index >= first_date) & (sp500_df.index <= last_date)].plot(ax=return_ax, title='Returns on Index')
     returns_df['PC1'].plot(ax=eig_ax, title='Returns on PC1')
+    plt.show(block=True)
+    
 
 
 def main():
-    # Application entrypoint
+    '''
+    Entrypoint into the application
+    '''
     stock_data = load_stock_data(PATH_TO_STOCKS_DATA)
     returns_df = build_returns_dataframe(stock_data)
     returns_df = perform_pca(returns_df, 15)
