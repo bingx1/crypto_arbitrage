@@ -107,6 +107,19 @@ def compare_plot(ind,ep):
     combined[ep.name].plot(ax=eig_ax, title='Returns on Eigenportfolio {}'.format(ep.name),color='cornflowerblue')
     return
 
+
+# # #  read in index-price data - comparing index with first eigen portfolio
+# bt40 = pd.read_csv(r"C:\Users\Bing\Documents\NumTech Ass 2\Coinmetrics data\b40.csv", index_col=0, parse_dates=True)
+# bt40 = bt40.rename(columns={'value': 'BT40'})
+# bt40 = bt40.pct_change()
+# bt40.name = 'BT40'
+# # compare_plot(bt40, eig_returns['EP1'])
+
+# eth = pd.read_csv(r"C:\Users\Bing\Documents\NumTech Ass 2\Bletchley Indexes\bletchley_ethereum_even.csv", index_col=0, parse_dates=True)
+# eth = eth.rename(columns={'value': 'ETH'})
+# eth = eth.pct_change()
+# eth.name = 'ETH'
+
 def plot_pca(pca: sklearn.decomposition.PCA, PCS: int):
     exp_var = pca.explained_variance_ratio_
     cum_expvar = np.cumsum(exp_var)
@@ -126,4 +139,15 @@ def plot_eigenportfolio(eigen_portfolios: pd.DataFrame, to_plot: int):
     plt.figure(3)
     plt.bar(a[:20].index, a[:20], width=0.5, color='slategrey', edgecolor='k')
     plt.title(f'Eigenvector {to_plot}')
+    plt.show()
+
+def plot_pnl(cumulative_portfolio_return):
+    plt.figure(2)
+    cumulative_portfolio_return.plot()
+    plt.title('Cumulative portfolio return over time')
+    plt.show()
+
+def plot_portfoliovalue(portfolio_value):
+    plt.figure(10)
+    portfolio_value.plot(title='Portfolio value over time')
     plt.show()

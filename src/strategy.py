@@ -194,8 +194,7 @@ def backtest(pca_window, regression_window, window_size, n_pcs, sample, startdat
         all_sigmas = [y[1] for y in out]
         avg_m = np.sum(all_m)/len(all_m)
         modified_m = [s_score[0] - avg_m for s_score in out]
-        adjusted_s_scores = [-m/sigma for m,
-                             sigma in zip(modified_m, all_sigmas)]
+        adjusted_s_scores = [-m/sigma for m, sigma in zip(modified_m, all_sigmas)]
         for count, coin in enumerate(sample.columns):
             output[coin].append(adjusted_s_scores[count])
 

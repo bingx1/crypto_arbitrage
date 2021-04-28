@@ -105,14 +105,13 @@ def display_trade(y, s_scores, df, startdate, coin, open_long = -1.25, open_shor
     L_ax.annotate('Exit long', xy=(long_exits.index[0],long_exits[0]),fontsize=8)
     L_ax.annotate('Enter short', xy=(short_signals.index[0],short_signals[0]),fontsize=8)
     L_ax.annotate('Exit short', xy=(short_exits.index[0],short_exits[0]),fontsize=8)
-    return
+    plt.show()
 
 def parse_s_scores(y, open_long, open_short, close_long, close_short):
     '''
     :param y: list of s-scores
     :return: a series of long/short signals with corresponding dates
     '''
-
     dates = []
     signals = []
     major_signals = []
@@ -146,7 +145,7 @@ def parse_s_scores(y, open_long, open_short, close_long, close_short):
     signal_series = pd.Series(signals, index = dates, name=y.name)
     return signal_series
 
-def scores_to_returns(y, open_long = -1.4, open_short = 1.05, close_long = -0.5, close_short = 0.75, annual_ir=0.015, slippage = 0.0005):
+def scores_to_returns(y, open_long = -1.25, open_short = 1.25, close_long = -0.5, close_short = 0.75, annual_ir=0.015, slippage = 0.0005):
     '''
     series of s_scores to returns
     :param y: series of s_scores
@@ -174,15 +173,11 @@ def scores_to_returns(y, open_long = -1.4, open_short = 1.05, close_long = -0.5,
     return x
 
 
-def get_PnL(results, plot = False):
+def get_PnL(results):
     ''''''
     portfolio_returns = results.apply(scores_to_returns, axis=0)
     portfolio_returns['Mean'] = np.mean(portfolio_returns, axis=1)
-    cum_return = np.cumprod((portfolio_returns['Mean']))
-    if plot:
-        plt.figure(2)
-        cum_return.plot()
-        plt.title('Cumulative portfolio return over time')
+    cum_return = np.cumprod((portfolio_returns['Mean']))    
     return cum_return
 
 def plot_portfolio_composition(path):
@@ -214,19 +209,6 @@ def returns_to_profits(series, value=100):
     return series
 
 
-# # #  read in index-price data - comparing index with first eigen portfolio
-# bt40 = pd.read_csv(r"C:\Users\Bing\Documents\NumTech Ass 2\Coinmetrics data\b40.csv", index_col=0, parse_dates=True)
-# bt40 = bt40.rename(columns={'value': 'BT40'})
-# bt40 = bt40.pct_change()
-# bt40.name = 'BT40'
-# # compare_plot(bt40, eig_returns['EP1'])
-
-# eth = pd.read_csv(r"C:\Users\Bing\Documents\NumTech Ass 2\Bletchley Indexes\bletchley_ethereum_even.csv", index_col=0, parse_dates=True)
-# eth = eth.rename(columns={'value': 'ETH'})
-# eth = eth.pct_change()
-# eth.name = 'ETH'
-
-
 def plot(prices_df, ico_dates):
     '''
     Plots some graphs related to the passed data.
@@ -235,6 +217,14 @@ def plot(prices_df, ico_dates):
     plotting.plot_cryptos(prices_df, to_plot)
     plotting.plot_launches_per_year(ico_dates, prices_df)
     plotting.plot_timeline(ico_dates)
+
+def get_portfolio_value_evolution(initial_capital: int, signals: pd.DataFrame, n_coins: int):
+    capital_portion = initial_capital / n_coins
+    portfolio_returns = signals.apply(scores_to_returns, axis=0)
+    portfolio_returns.iloc[0] = capital_portion
+    portfolio_returns = portfolio_returns.apply(np.cumprod, axis=0)
+    portfolio_value_evolution = np.sum(portfolio_returns,axis=1)
+    return portfolio_value_evolution
 
 if __name__ == "__main__":
     starttime = time.time()
@@ -256,24 +246,17 @@ if __name__ == "__main__":
     startdate = datetime(2018,1,1) # Choose the time period of the sample
     sample = make_sample(returns, volumes_df, startdate, volume, sample_window, PCA_window)                
 
-
     eigen_portfolios, eigen_vals = do_pca(startdate, sample, PCA_window, PCS)
     eig_returns = get_eigenportfolio_returns(datetime(2019,1,1), sample, eigen_portfolios, eigen_vals, PCS)
 
     output = backtest(PCA_window, regression_window, sample_window, PCS, sample, startdate, pc_interval)
+    output.to_csv("output.csv")
     print(output)
-
     # plot_portfolio_composition(r"C:\Users\Bing\Documents\NumTech Ass 2\S-score results\In sample\160 50 5 S_scores.csv")
-
-
-    # PnL = get_PnL(results)
-    # capital_portion = base_capital / len(active)
-    # portfolio_returns = results.apply(scores_to_returns, axis=0)
-    # portfolio_returns.iloc[0] = capital_portion
-    # portfolio_returns = portfolio_returns.apply(np.cumprod, axis=0)
-    # portfolio_value_evolution = np.sum(portfolio_returns,axis=1)
-    # plt.figure(10)
-    # portfolio_value_evolution.plot(title='Portfolio value over time')
-    # print('That took {} seconds'.format(time.time() - starttime))
-    # sigs = parse_s_scores(results['XRP'])
-    # display_trade(sigs, results['XRP'], df, startdate, 'XRP')
+    # PnL = get_PnL(output)
+    # plotting.plot_pnl(PnL)
+    # portfolio_value_evolution = get_portfolio_value_evolution(base_capital, output, len(sample.columns))
+    # plt.plot(portfolio_value_evolution)
+    # Demonstrate the trading signals for LTC
+    sigs = parse_s_scores(output['LTC'],  open_long = -1.25, open_short = 1.25, close_long = -0.5, close_short = 0.75)
+    display_trade(sigs, output['LTC'], prices_df, startdate, 'LTC')
