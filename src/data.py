@@ -11,6 +11,7 @@ import statsmodels.api as sm
 import time as time
 from multiprocessing import Pool
 from functools import reduce
+import plotting
 
 PATH_TO_COINS_DATA = "../data/coinmarketcap_data/"
 
@@ -51,31 +52,9 @@ def build_price_and_volume_dataframe(coins_data: pd.DataFrame):
     '''
     prices = pd.concat([df["close"].rename(df.name) for df in coins_data], axis = 1)
     volumes = pd.concat([df["volumeto"].rename(df.name) for df in coins_data], axis = 1)
-    # print(prices)
-    # concat = pd.concat(prices, axis=1)
-    print(prices)
-    print(volumes)
-    # prices_df = combine_and_make_dataframe(prices)
-    # volume_df = combine_and_make_dataframe(volumes)
-    # print(prices_df.head())
-    # print(volume_df.head())
-    # print(prices, volumes)
-
-    # # build price and volume dataframe for all coins n
-    # df = coins['BTC'][['close']].copy()
-    # df = df.rename(columns={'close': 'BTC'})
-    # vol_df = coins['BTC'][['volumeto']].copy()
-    # vol_df = vol_df.rename(columns={'volumeto': 'BTC'})
-    # for coin in coins:
-    #     if coin == 'BTC':
-    #         pass
-    #     # put all other coins into dataframe
-    #     else:
-    #         df[coin] = coins[coin]['close']
-    #         vol_df[coin] = coins[coin]['volumeto']
-
-
-
+    # INSERT column 'Active' into dataframe to count active coins at each date
+    prices['Active'] = prices.count(axis=1)
+    return prices, volumes
     # # INSERT column 'Active' into dataframe to count active coins at each date
     # df['Active'] = df.count(axis=1)
     # # if tl_plt:
@@ -464,9 +443,11 @@ def returns_to_profits(series, value=100):
 if __name__ == "__main__":
     starttime = time.time()
     coins_data, ico_dates = load_coin_data(PATH_TO_COINS_DATA)
-    # print(coins_data, ico_dates)
-    build_price_and_volume_dataframe(coins_data)
-
+    prices_df, volumes_df = build_price_and_volume_dataframe(coins_data)
+    # print(prices_df, volumes_df)
+    to_plot = ['BTC','DOGE','DASH','ETH']
+    plotting.plot_cryptos(prices_df, to_plot)
+    # print(prices_df.loc[prices_df['XRP'].isna() == False, 'XRP'])
     # # Generate a dataframe with returns
     # returns = df.pct_change()
     # returns.index.name = 'Date'

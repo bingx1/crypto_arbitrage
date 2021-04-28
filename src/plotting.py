@@ -38,27 +38,30 @@ def plot_timeline(dates, symbols, title):
  plt.show()
  return
 
-def plot_cryptos(coins, c1,c2,c3,c4):
+
+
+def plot_cryptos(coins: pd.DataFrame, coins_to_plot: list):
+    '''
+    Constructs a plot of 4 subplots, where each subplot is the price chart of one of the
+    passed cryptocurrencies.
+    '''
     fig, ax = plt.subplots(figsize=(10, 8))
-    ax1 = plt.subplot2grid((2,2),(0,0))
-    ax2 = plt.subplot2grid((2,2),(0,1))
-    ax3 = plt.subplot2grid((2,2),(1,0))
-    ax4 = plt.subplot2grid((2,2),(1,1))
-    ax1.plot(coins[c1]['date'],coins[c1]['price(USD)'],'g-')
-    ax1.set_title('{}:USD'.format(c1),fontsize=10)
     dates = [datetime(2013,1,1),datetime(2014,1,1),datetime(2015,1,1), datetime(2016,1,1),datetime(2017,1,1), datetime(2018,1,1), datetime(2019,1,1)]
-    ax1.set_xticks(dates)
-    ax2.plot(coins[c2]['date'],coins[c2]['price(USD)'],'g-')
-    ax2.set_title('{}:USD'.format(c2),fontsize=10)
-    ax2.set_xticks(dates)
-    ax3.plot(coins[c3]['date'],coins[c3]['price(USD)'],'g-')
-    ax3.set_title('{}:USD'.format(c3),fontsize=10)
-    ax3.set_xticks(dates)
-    ax4.plot(coins[c4]['date'],coins[c4]['price(USD)'],'g-')
-    ax4.set_title('{}:USD'.format(c4),fontsize=10)
-    ax4.set_xticks(dates)
-    fig.suptitle('Ripple, Bitcoin, Dash, Ethereum USD Pairs 2013-2019',fontsize=14)
-    return
+
+    axes = [plt.subplot2grid((2,2),(0,0)), plt.subplot2grid((2,2),(0,1)), 
+            plt.subplot2grid((2,2),(1,0)), plt.subplot2grid((2,2),(1,1))]
+
+    for axis, coin in zip(axes, coins_to_plot):
+        coin_data = coins.loc[coins[coin].isna()==False, coin]
+        axis.plot(coin_data)
+        axis.set_title('{}:USD'.format(coin),fontsize=10)
+        axis.get_xaxis().set_major_formatter(mdates.DateFormatter("%Y"))
+        axis.set_xlim(np.datetime64('2013-01'), np.datetime64('2019-01'))
+        # axis.set_xticks(dates)
+    # fig.autofmt_xdate()
+    fig.suptitle(str(coins_to_plot).strip('[]')  + ' USD Pairs 2013-2019',fontsize=14)
+    plt.show()
+
 
 def plot_launches_per_year(years, df):
     '''
