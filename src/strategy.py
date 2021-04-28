@@ -33,52 +33,42 @@ def make_sample(returns_df, volume_df, sample_start_date, min_volume, sample_len
 
 
 
-def do_pca(date, returns_df, pcawindow, PCS, active):
+def do_pca(date, sample, pca_window, n_pcs):
     '''
-    Do pca on the returns_df inputted. Return the eigenvectors corresponding to the first 'Number_factors' principal
-    components
-    :param date: date from which to conduct PCA
-    :param returns_df: ENTIRE returns returns_df
-    :param pcawindow: length of PCA window
-    :param PCS: number of eigenvectors to return
-    :param active: list of active cryptocurrencies in the SAMPLE
-    :return: A returns_df of eigenvectors
+    Perform PCA using sklearn with the given parameters. 
+    Returns the resulting eigenportfolios and eigenvalues.
     '''
-    pcawindow_start = date - timedelta(days=pcawindow)
+    window_start = date - timedelta(days=pca_window)
+    logger.log('PERFORMING PCA - Using {} principle components and data from {} to {}, inclusive.'.format(n_pcs, window_start.date(), date.date()))
     # Might be incorrect making the date inclusive at both ends.
-    pca_data = returns_df.loc[(returns_df.index >= pcawindow_start) & (returns_df.index <= date), active]
+    pca_data = sample.loc[(sample.index >= window_start) & (sample.index <= date)]
     stdev_returns = pca_data.std(ddof=1, axis=0)
+
     # Standardise the data
     sample = StandardScaler().fit_transform(pca_data)
-    # Call PCA function to do PCA
-    pca = PCA(n_components=PCS)
-    transformed = pca.fit_transform(sample)
-    
-    pcdf = pd.returns_df(pca.components_.T, columns=['PC{}'.format(i) for i in range(1,PCS+1)], index=pca_data.columns)
-    eigen_values = pca.explained_variance_
-    # Multiply rows by 1/ STDEV of each coin return to get eigen portfolio weights
-    eigen_portfolios = pcdf.div(stdev_returns, axis=0)
 
+    # Call PCA function to do PCA
+    pca = PCA(n_components=n_pcs)
+    transformed = pca.fit_transform(sample)
+
+    pcdf = pd.DataFrame(pca.components_.T, columns=['PC{}'.format(i) for i in range(1,n_pcs+1)], index=pca_data.columns)
+    # Multiply rows by 1/ STDEV of each coin return to get eigenportfolio weights
+    eigen_portfolios = pcdf.div(stdev_returns, axis=0)
+    eigen_values = pca.explained_variance_
     return eigen_portfolios, eigen_values
 
-def get_eigenportfolio_returns(eigen_portfolios, eigen_values, returns_df, active, date, n_pcs):
+def get_eigenportfolio_returns(date, sample, eigen_portfolios, eigen_values, n_pcs):
     '''
-    Retrieve the historical trailling window eigenportfolio returns
-    :param eigen_portfolios: eigen portfolio weights
-    :param eigen_values: eigenvalues of eigenportoflios
-    :param returns_df: entire returns_df
-    :param active: list of coins in the sample
-    :param date:  date from which to retrieve data from
-    :return: series of eigenportfolio returns
+    Returns the historical returns of the passed eigenportfolios. 
     '''
-    pca_data = returns_df.loc[(returns_df.index <= date), active]
+    returns_data = sample.loc[(sample.index <= date)]
+    logger.log(f'CALCULATING - Calculating eigenportfolio returns to {date.date()}')    
     # Eigen portfolio's are the columns. Add returns for each eigen portfolio of interest to pca_data
+    # eigenportfolio_returns = []
     eig_ports = ['EP{}'.format(i) for i in range(1,n_pcs+1)]
     for i in range(1, n_pcs + 1):
-        pc = 'PC{}'.format(i)
-        ep = 'EP{}'.format(i)
-        pca_data[ep] = ((np.sum(pca_data[active].multiply(eigen_portfolios[pc].to_list()), axis=1)) * -1) / (eigen_values[i - 1])
-    return pca_data[eig_ports]
+        returns_data[f'EP{i}'] = ((np.sum(returns_data.multiply(eigen_portfolios[f'PC{i}']), axis=1)) * -1) / (eigen_values[i - 1])
+    return returns_data[eig_ports]
 
 
 def backtest(PCA_window, regression_window, sample_window, PCS, returns, active, startdate, pc_interval):

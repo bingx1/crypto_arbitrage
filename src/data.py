@@ -13,7 +13,7 @@ from multiprocessing import Pool
 from functools import reduce
 import plotting
 from collections import Counter
-from strategy import make_sample
+from strategy import make_sample, do_pca, get_eigenportfolio_returns
 
 PATH_TO_COINS_DATA = "../data/coinmarketcap_data/"
 
@@ -72,64 +72,64 @@ def build_price_and_volume_dataframe(coins_data: pd.DataFrame):
 
 
 # --------------------------Make eigenportfolios------------------------------------------
-def do_pca(date, dataframe, pcawindow, PCS, active, plot = False):
-    '''
-    Do pca on the dataframe inputted. Return the eigenvectors corresponding to the first 'Number_factors' principal
-    components
-    :param date: date from which to conduct PCA
-    :param dataframe: ENTIRE returns dataframe
-    :param pcawindow: length of PCA window
-    :param PCS: number of eigenvectors to return
-    :param active: list of active cryptocurrencies in the SAMPLE
-    :return: A dataframe of eigenvectors
-    '''
-    pcawindow_start = date - timedelta(days=pcawindow)
-    pca_data = dataframe.loc[(dataframe.index >= pcawindow_start)&(dataframe.index <= date), active].copy()
-    s = pca_data.std(ddof=1, axis=0)
-    sample2 = StandardScaler().fit_transform(pca_data)
-    # Call PCA function to do PCA
-    pcs = ['PC{}'.format(i) for i in range(1,PCS+1)]
-    pca = PCA(n_components=PCS)
-    pca2 = pca.fit_transform(sample2)
-    pcdf = pd.DataFrame(pca.components_.T, columns=pcs, index=sample.columns)
-    eigvals = pca.explained_variance_
-    exp_var = pca.explained_variance_ratio_
-    cum_expvar = np.cumsum(exp_var)
-    # plot variance explained graph
-    if plot:
-        print ('First principal component explains {} of the variance'.format(round(exp_var[0],4)))
-        print ('Var explained by the 1st {} components:{}'.format(PCS,round(cum_expvar[-1],4)))
-        plt.figure(5)
-        plt.bar(['PC {}'.format(i) for i in range(1,PCS+1)], exp_var, color='lightsteelblue', edgecolor='k', width=0.6)
-        plt.xticks(['PC {}'.format(i) for i in range(1,PCS+1)], rotation= 0)
-        plt.plot(['PC {}'.format(i) for i in range(1,PCS+1)], cum_expvar, ls='--', color='cornflowerblue')
-        plt.legend(['Cumulative variance explained','Proportion of variance explained'],fontsize=7)
-        plt.title('Variance explained by PC 1 - PC {}'.format(PCS),fontsize = 13)
-    # Multiply rows by 1/STDEV of each coin return to get eigen portfolio weights
-    eig_portfolios = pcdf.div(s, axis=0)
-    # Multiply colums by 1/sum of each column weights
-    # total_weights = eig_portfolios.sum(axis=0)
-    # eig_portfolios = eig_portfolios.div(total_weights, axis = 1)
-    return eig_portfolios, eigvals
+# def do_pca(date, dataframe, pcawindow, PCS, active, plot = False):
+#     '''
+#     Do pca on the dataframe inputted. Return the eigenvectors corresponding to the first 'Number_factors' principal
+#     components
+#     :param date: date from which to conduct PCA
+#     :param dataframe: ENTIRE returns dataframe
+#     :param pcawindow: length of PCA window
+#     :param PCS: number of eigenvectors to return
+#     :param active: list of active cryptocurrencies in the SAMPLE
+#     :return: A dataframe of eigenvectors
+#     '''
+#     pcawindow_start = date - timedelta(days=pcawindow)
+#     pca_data = dataframe.loc[(dataframe.index >= pcawindow_start)&(dataframe.index <= date), active].copy()
+#     s = pca_data.std(ddof=1, axis=0)
+#     sample2 = StandardScaler().fit_transform(pca_data)
+#     # Call PCA function to do PCA
+#     pcs = ['PC{}'.format(i) for i in range(1,PCS+1)]
+#     pca = PCA(n_components=PCS)
+#     pca2 = pca.fit_transform(sample2)
+#     pcdf = pd.DataFrame(pca.components_.T, columns=pcs, index=sample.columns)
+#     eigvals = pca.explained_variance_
+#     exp_var = pca.explained_variance_ratio_
+#     cum_expvar = np.cumsum(exp_var)
+#     # plot variance explained graph
+#     if plot:
+#         print ('First principal component explains {} of the variance'.format(round(exp_var[0],4)))
+#         print ('Var explained by the 1st {} components:{}'.format(PCS,round(cum_expvar[-1],4)))
+#         plt.figure(5)
+#         plt.bar(['PC {}'.format(i) for i in range(1,PCS+1)], exp_var, color='lightsteelblue', edgecolor='k', width=0.6)
+#         plt.xticks(['PC {}'.format(i) for i in range(1,PCS+1)], rotation= 0)
+#         plt.plot(['PC {}'.format(i) for i in range(1,PCS+1)], cum_expvar, ls='--', color='cornflowerblue')
+#         plt.legend(['Cumulative variance explained','Proportion of variance explained'],fontsize=7)
+#         plt.title('Variance explained by PC 1 - PC {}'.format(PCS),fontsize = 13)
+#     # Multiply rows by 1/STDEV of each coin return to get eigen portfolio weights
+#     eig_portfolios = pcdf.div(s, axis=0)
+#     # Multiply colums by 1/sum of each column weights
+#     # total_weights = eig_portfolios.sum(axis=0)
+#     # eig_portfolios = eig_portfolios.div(total_weights, axis = 1)
+#     return eig_portfolios, eigvals
 
-def get_eigenportfolio_returns(eig_portfolios, eigvals, dataframe, active, date):
-    '''
-    Retrieve the historical trialing window eigenportfolio returns
-    :param eig_portfolios: eigen portfolio weights
-    :param eigvals: eigenvalues of eigenportoflios
-    :param dataframe: entire returns dataframe
-    :param active: list of coins in the sample
-    :param date:  date from which to retrieve data from
-    :return: series of eigenportfolio returns
-    '''
-    pca_data = dataframe.loc[(dataframe.index <= date), active].copy()
-    # Eigen portfolio's are the columns. Add returns for each eigen portfolio of interest to pca_data
-    eig_ports = ['EP{}'.format(i) for i in range(1,PCS+1)]
-    for i in range(1, PCS + 1):
-        pc = 'PC{}'.format(i)
-        ep = 'EP{}'.format(i)
-        pca_data[ep] = ((np.sum(pca_data[active].multiply(eig_portfolios[pc].to_list()), axis=1)) * -1) / (eigvals[i - 1])
-    return pca_data[eig_ports]
+# def get_eigenportfolio_returns(eig_portfolios, eigvals, dataframe, active, date):
+#     '''
+#     Retrieve the historical trialing window eigenportfolio returns
+#     :param eig_portfolios: eigen portfolio weights
+#     :param eigvals: eigenvalues of eigenportoflios
+#     :param dataframe: entire returns dataframe
+#     :param active: list of coins in the sample
+#     :param date:  date from which to retrieve data from
+#     :return: series of eigenportfolio returns
+#     '''
+#     pca_data = dataframe.loc[(dataframe.index <= date), active].copy()
+#     # Eigen portfolio's are the columns. Add returns for each eigen portfolio of interest to pca_data
+#     eig_ports = ['EP{}'.format(i) for i in range(1,PCS+1)]
+#     for i in range(1, PCS + 1):
+#         pc = 'PC{}'.format(i)
+#         ep = 'EP{}'.format(i)
+#         pca_data[ep] = ((np.sum(pca_data[active].multiply(eig_portfolios[pc].to_list()), axis=1)) * -1) / (eigvals[i - 1])
+#     return pca_data[eig_ports]
 
 
 
@@ -444,8 +444,12 @@ if __name__ == "__main__":
     # capital_portion = base_capital / len(active)
 
     # plot_portfolio_composition(r"C:\Users\Bing\Documents\NumTech Ass 2\S-score results\In sample\160 50 5 S_scores.csv")
-    # eigportfolios, eigvals = do_pca(startdate, returns, PCA_window, PCS, active)
-    # eig_returns = get_eigenportfolio_returns(eigportfolios, eigvals, returns, active, datetime(2019,1,1))
+    eigen_portfolios, eigen_vals = do_pca(startdate, sample, PCA_window, PCS)
+    print(eigen_portfolios)
+    eig_returns = get_eigenportfolio_returns(datetime(2019,1,1), sample, eigen_portfolios, eigen_vals, PCS)
+    print(eig_returns)
+    # (eigen_portfolios, eigen_vals, returns, active, datetime(2019,1,1))
+    
     # a = eigportfolios['PC2'].sort_values(ascending=False)
     # plt.figure(3)
     # plt.bar(a[:20].index, a[:20], width=0.5, color='slategrey', edgecolor='k')
