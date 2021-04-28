@@ -63,12 +63,12 @@ def get_eigenportfolio_returns(date, sample, eigen_portfolios, eigen_values, n_p
     '''
     returns_data = sample.loc[(sample.index <= date)]
     logger.log(f'CALCULATING - Calculating eigenportfolio returns to {date.date()}')    
-    # Eigen portfolio's are the columns. Add returns for each eigen portfolio of interest to pca_data
-    # eigenportfolio_returns = []
-    eig_ports = ['EP{}'.format(i) for i in range(1,n_pcs+1)]
+    eigenportfolio_returns = []
     for i in range(1, n_pcs + 1):
-        returns_data[f'EP{i}'] = ((np.sum(returns_data.multiply(eigen_portfolios[f'PC{i}']), axis=1)) * -1) / (eigen_values[i - 1])
-    return returns_data[eig_ports]
+        ep_returns = ((np.sum(returns_data.multiply(eigen_portfolios[f'PC{i}']), axis=1)) * -1) / (eigen_values[i - 1])
+        ep_returns.name = f'EP{i}'
+        eigenportfolio_returns.append(ep_returns)
+    return pd.DataFrame(eigenportfolio_returns).T
 
 
 def backtest(PCA_window, regression_window, sample_window, PCS, returns, active, startdate, pc_interval):
