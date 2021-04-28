@@ -1,47 +1,53 @@
 import pandas as pd
 import numpy as np
 from matplotlib import pyplot as plt
-import matplotlib.dates as mdates
 from datetime import datetime
 from datetime import timedelta
 import os
 import glob
-import requests
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 import statsmodels.api as sm
 import time as time
 from multiprocessing import Pool
 
-def read_price_data(path, tl_plt = False, peryear_plt = False, coins_plt = []):
+PATH_TO_COINS_DATA = "../data/coinmarketcap_data/"
+
+
+def clean_coin_data(coin_data: pd.DataFrame) -> None:
+    coin_data['time'] = pd.to_datetime(coin_data['time'])
+    coin_data.index = pd.to_datetime(coin_data['time'])
+
+def load_coin_data(path:str):
     '''
-    :param path: path that contains all the csv files
-    :param tl_pt: whether to plot the timeline or not
-    :param peryear_plt: where to plot coins per year or not
-    :param coins_plt: 4 coins to plot
-    :return: dataframe
+    Returns a list of dataframes containing the price data of each coin,
+    and a dictionary where the keys are TICKERS and values are the ICO date of the coin.
     '''
-    coins = {}, dates = [], last_vol = {}, symbols = []
-    years = {2013: 0, 2014: 0, 2015: 0, 2016: 0, 2017: 0, 2018: 0, 2019: 0}
+    coins_data = []
+    ico_dates = {}
     # read in the price data
     for filename in glob.glob(os.path.join(path, '*.csv')):
-        tick = filename.split('\\')[-1][:-4]
-        # print (tick)
+        fname = filename.split('/')[-1]
+        ticker = fname.split('.')[0]
+        print(ticker)
         coin_data = pd.read_csv(filename)
     #     clean up the data
-        coin_data['time'] = pd.to_datetime(coin_data['time'])
-        coin_data.index = pd.to_datetime(coin_data['time'])
-    #     store the data into the dict
-        coins[tick] = coin_data
-    #     DO not include coins
+        clean_coin_data(coin_data)
+        coin_data.name = ticker
+        coins_data.append(coin_data)
+    #     Do not include coins in our analysis of ICO dates.
         if 'value' in coin_data.columns:
             pass
         else:
-    #     store the ticker and ICO date into coins and dates and VOLUME
-            dates.append(coin_data.iloc[0]['time'])
-            years[coin_data.iloc[0]['time'].year] += 1
-            symbols.append(tick)
-            last_vol[tick] = coin_data.iloc[-1]['volumeto']
+            # Record the ICO date of the coin
+            ico_dates[ticker] = coin_data.iloc[0]['time']
+    return coins_data, ico_dates
+
+def build_price_and_volume_dataframe(coins_data: pd.DataFrame):
+    '''
+    Builds a price dataframe and a volume dataframe
+    '''
+
     # build price and volume dataframe for all coins n
     df = coins['BTC'][['close']].copy()
     df = df.rename(columns={'close': 'BTC'})
@@ -56,13 +62,13 @@ def read_price_data(path, tl_plt = False, peryear_plt = False, coins_plt = []):
             vol_df[coin] = coins[coin]['volumeto']
     # INSERT column 'Active' into dataframe to count active coins at each date
     df['Active'] = df.count(axis=1)
-    if tl_plt:
-         plot_timeline(dates,symbols,'2013-2019 Cryptocurrency ICO Dates')
-    if len(coins_plt) > 0:
-        # Plot the prices of 4 coins
-        plot_cryptos(coins,coins_plt[0],coins_plt[1],coins_plt[2],coins_plt[3])
-    if peryear_plt:
-        plot_launches_per_year(years, df)
+    # if tl_plt:
+    #      plot_timeline(dates,symbols,'2013-2019 Cryptocurrency ICO Dates')
+    # if len(coins_plt) > 0:
+    #     # Plot the prices of 4 coins
+    #     plot_cryptos(coins,coins_plt[0],coins_plt[1],coins_plt[2],coins_plt[3])
+    # if peryear_plt:
+    #     plot_launches_per_year(years, df)
     return df, vol_df
 
 
@@ -427,54 +433,55 @@ def returns_to_profits(series, value=100):
     return series
 
 
-# #  read in index-price data - comparing index with first eigen portfolio
-bt40 = pd.read_csv(r"C:\Users\Bing\Documents\NumTech Ass 2\Coinmetrics data\b40.csv", index_col=0, parse_dates=True)
-bt40 = bt40.rename(columns={'value': 'BT40'})
-bt40 = bt40.pct_change()
-bt40.name = 'BT40'
-# compare_plot(bt40, eig_returns['EP1'])
+# # #  read in index-price data - comparing index with first eigen portfolio
+# bt40 = pd.read_csv(r"C:\Users\Bing\Documents\NumTech Ass 2\Coinmetrics data\b40.csv", index_col=0, parse_dates=True)
+# bt40 = bt40.rename(columns={'value': 'BT40'})
+# bt40 = bt40.pct_change()
+# bt40.name = 'BT40'
+# # compare_plot(bt40, eig_returns['EP1'])
 
-eth = pd.read_csv(r"C:\Users\Bing\Documents\NumTech Ass 2\Bletchley Indexes\bletchley_ethereum_even.csv", index_col=0, parse_dates=True)
-eth = eth.rename(columns={'value': 'ETH'})
-eth = eth.pct_change()
-eth.name = 'ETH'
+# eth = pd.read_csv(r"C:\Users\Bing\Documents\NumTech Ass 2\Bletchley Indexes\bletchley_ethereum_even.csv", index_col=0, parse_dates=True)
+# eth = eth.rename(columns={'value': 'ETH'})
+# eth = eth.pct_change()
+# eth.name = 'ETH'
 
 if __name__ == "__main__":
     starttime = time.time()
-    df, vol_df = read_price_data(r'C:\Users\Bing\Documents\NumTech Ass 2\Coinmarketcap data')
-    # Generate a dataframe with returns
-    returns = df.pct_change()
-    returns.index.name = 'Date'
-    # ========= PARAMETERS ============
-    PCA_window = 160
-    regression_window = 50
-    pc_interval = 60
-    PCS = 5
-    volume = 10000
-    sample_window = 365 #147
-    base_capital = 10000
+    coins_data, ico_dates = load_coin_data(PATH_TO_COINS_DATA)
+    print(coins_data, ico_dates)
+    # # Generate a dataframe with returns
+    # returns = df.pct_change()
+    # returns.index.name = 'Date'
+    # # ========= PARAMETERS ============
+    # PCA_window = 160
+    # regression_window = 50
+    # pc_interval = 60
+    # PCS = 5
+    # volume = 10000
+    # sample_window = 365 #147
+    # base_capital = 10000
 
-    startdate = datetime(2018,1,1) # Choose the time period of the sample
-    sample, active = get_sample(startdate, returns, vol_df, volume, sample_window, PCA_window) # Get the sample
-    capital_portion = base_capital / len(active)
-    dic = {}
-    dict2 = {}
-    # plot_portfolio_composition(r"C:\Users\Bing\Documents\NumTech Ass 2\S-score results\In sample\160 50 5 S_scores.csv")
-    # eigportfolios, eigvals = do_pca(startdate, returns, PCA_window, PCS, active)
-    #     # eig_returns = get_eigenportfolio_returns(eigportfolios, eigvals, returns, active, datetime(2019,1,1))
-    #     # a = eigportfolios['PC2'].sort_values(ascending=False)
-    #     # plt.figure(3)
-    #     # plt.bar(a[:20].index, a[:20], width=0.5, color='slategrey', edgecolor='k')
-    #     # plt.title('Second Eigenvector')
-    storage = backtest(PCA_window, regression_window, sample_window, PCS, returns, active, startdate, pc_interval)
-    results = save_regression_results(storage, sample, PCA_window, regression_window, PCS, save=False)
-    PnL = get_PnL(results)
-    portfolio_returns = results.apply(scores_to_returns, axis=0)
-    portfolio_returns.iloc[0] = capital_portion
-    portfolio_returns = portfolio_returns.apply(np.cumprod, axis=0)
-    portfolio_value_evolution = np.sum(portfolio_returns,axis=1)
-    plt.figure(10)
-    portfolio_value_evolution.plot(title='Portfolio value over time')
+    # startdate = datetime(2018,1,1) # Choose the time period of the sample
+    # sample, active = get_sample(startdate, returns, vol_df, volume, sample_window, PCA_window) # Get the sample
+    # capital_portion = base_capital / len(active)
+    # dic = {}
+    # dict2 = {}
+    # # plot_portfolio_composition(r"C:\Users\Bing\Documents\NumTech Ass 2\S-score results\In sample\160 50 5 S_scores.csv")
+    # # eigportfolios, eigvals = do_pca(startdate, returns, PCA_window, PCS, active)
+    # #     # eig_returns = get_eigenportfolio_returns(eigportfolios, eigvals, returns, active, datetime(2019,1,1))
+    # #     # a = eigportfolios['PC2'].sort_values(ascending=False)
+    # #     # plt.figure(3)
+    # #     # plt.bar(a[:20].index, a[:20], width=0.5, color='slategrey', edgecolor='k')
+    # #     # plt.title('Second Eigenvector')
+    # storage = backtest(PCA_window, regression_window, sample_window, PCS, returns, active, startdate, pc_interval)
+    # results = save_regression_results(storage, sample, PCA_window, regression_window, PCS, save=False)
+    # PnL = get_PnL(results)
+    # portfolio_returns = results.apply(scores_to_returns, axis=0)
+    # portfolio_returns.iloc[0] = capital_portion
+    # portfolio_returns = portfolio_returns.apply(np.cumprod, axis=0)
+    # portfolio_value_evolution = np.sum(portfolio_returns,axis=1)
+    # plt.figure(10)
+    # portfolio_value_evolution.plot(title='Portfolio value over time')
     # print('That took {} seconds'.format(time.time() - starttime))
     # sigs = parse_s_scores(results['XRP'])
     # display_trade(sigs, results['XRP'], df, startdate, 'XRP')
