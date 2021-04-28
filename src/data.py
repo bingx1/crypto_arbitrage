@@ -19,7 +19,6 @@ PATH_TO_COINS_DATA = "../data/coinmarketcap_data/"
 
 
 def clean_coin_data(coin_data: pd.DataFrame) -> None:
-    # coin_data['time'] = pd.to_datetime(coin_data['time'])
     coin_data.index = pd.to_datetime(coin_data['time'])
 
 def load_coin_data(path:str):
@@ -57,112 +56,6 @@ def build_price_and_volume_dataframe(coins_data: pd.DataFrame):
     # INSERT column 'Active' into dataframe to count active coins at each date
     prices['Active'] = prices.count(axis=1)
     return prices, volumes
-    # # INSERT column 'Active' into dataframe to count active coins at each date
-    # df['Active'] = df.count(axis=1)
-    # # if tl_plt:
-    # #      plot_timeline(dates,symbols,'2013-2019 Cryptocurrency ICO Dates')
-    # # if len(coins_plt) > 0:
-    # #     # Plot the prices of 4 coins
-    # #     plot_cryptos(coins,coins_plt[0],coins_plt[1],coins_plt[2],coins_plt[3])
-    # # if peryear_plt:
-    # #     plot_launches_per_year(years, df)
-    # return df, vol_df
-
-
-
-
-# --------------------------Make eigenportfolios------------------------------------------
-# def do_pca(date, dataframe, pcawindow, PCS, active, plot = False):
-#     '''
-#     Do pca on the dataframe inputted. Return the eigenvectors corresponding to the first 'Number_factors' principal
-#     components
-#     :param date: date from which to conduct PCA
-#     :param dataframe: ENTIRE returns dataframe
-#     :param pcawindow: length of PCA window
-#     :param PCS: number of eigenvectors to return
-#     :param active: list of active cryptocurrencies in the SAMPLE
-#     :return: A dataframe of eigenvectors
-#     '''
-#     pcawindow_start = date - timedelta(days=pcawindow)
-#     pca_data = dataframe.loc[(dataframe.index >= pcawindow_start)&(dataframe.index <= date), active].copy()
-#     s = pca_data.std(ddof=1, axis=0)
-#     sample2 = StandardScaler().fit_transform(pca_data)
-#     # Call PCA function to do PCA
-#     pcs = ['PC{}'.format(i) for i in range(1,PCS+1)]
-#     pca = PCA(n_components=PCS)
-#     pca2 = pca.fit_transform(sample2)
-#     pcdf = pd.DataFrame(pca.components_.T, columns=pcs, index=sample.columns)
-#     eigvals = pca.explained_variance_
-#     exp_var = pca.explained_variance_ratio_
-#     cum_expvar = np.cumsum(exp_var)
-#     # plot variance explained graph
-#     if plot:
-#         print ('First principal component explains {} of the variance'.format(round(exp_var[0],4)))
-#         print ('Var explained by the 1st {} components:{}'.format(PCS,round(cum_expvar[-1],4)))
-#         plt.figure(5)
-#         plt.bar(['PC {}'.format(i) for i in range(1,PCS+1)], exp_var, color='lightsteelblue', edgecolor='k', width=0.6)
-#         plt.xticks(['PC {}'.format(i) for i in range(1,PCS+1)], rotation= 0)
-#         plt.plot(['PC {}'.format(i) for i in range(1,PCS+1)], cum_expvar, ls='--', color='cornflowerblue')
-#         plt.legend(['Cumulative variance explained','Proportion of variance explained'],fontsize=7)
-#         plt.title('Variance explained by PC 1 - PC {}'.format(PCS),fontsize = 13)
-#     # Multiply rows by 1/STDEV of each coin return to get eigen portfolio weights
-#     eig_portfolios = pcdf.div(s, axis=0)
-#     # Multiply colums by 1/sum of each column weights
-#     # total_weights = eig_portfolios.sum(axis=0)
-#     # eig_portfolios = eig_portfolios.div(total_weights, axis = 1)
-#     return eig_portfolios, eigvals
-
-# def get_eigenportfolio_returns(eig_portfolios, eigvals, dataframe, active, date):
-#     '''
-#     Retrieve the historical trialing window eigenportfolio returns
-#     :param eig_portfolios: eigen portfolio weights
-#     :param eigvals: eigenvalues of eigenportoflios
-#     :param dataframe: entire returns dataframe
-#     :param active: list of coins in the sample
-#     :param date:  date from which to retrieve data from
-#     :return: series of eigenportfolio returns
-#     '''
-#     pca_data = dataframe.loc[(dataframe.index <= date), active].copy()
-#     # Eigen portfolio's are the columns. Add returns for each eigen portfolio of interest to pca_data
-#     eig_ports = ['EP{}'.format(i) for i in range(1,PCS+1)]
-#     for i in range(1, PCS + 1):
-#         pc = 'PC{}'.format(i)
-#         ep = 'EP{}'.format(i)
-#         pca_data[ep] = ((np.sum(pca_data[active].multiply(eig_portfolios[pc].to_list()), axis=1)) * -1) / (eigvals[i - 1])
-#     return pca_data[eig_ports]
-
-
-
-# ----------- Regress each coin's returns on eigenportfolio returns
-def regress_pcafactors(x, y, date, window):
-    '''
-    :param x: independent variables - eigenportfolio returns
-    :param y: dependent variable - coin return
-    :param date: regress on all data up till this date
-    :param window: length of time to do regression
-    :return: residuals, alpha
-    '''
-    start_date = date - timedelta(days=window)
-    x = x.iloc[(x.index <= date) & (x.index > start_date)]
-    y = y.iloc[(y.index <= date) & (y.index > start_date)]
-    x = sm.add_constant(x)
-    model = sm.OLS(y, x)
-    results = model.fit()
-    alpha = results.params[0]
-    resids = results.resid
-    Xt = np.cumsum(resids)
-    return alpha, Xt
-
-def regress_OUprocess(Xt):
-    '''
-    :param resids:
-    :return: s-score
-    '''
-    ARmodel = sm.tsa.AR(Xt,freq='D').fit(maxlag=1)
-    params = ARmodel.params
-    resids = ARmodel.resid
-    resid_var = np.var(resids)
-    return params[0], params[1], resid_var
 
 
 def display_trade(y, s_scores, df, startdate, coin, open_long = -1.25, open_short = 1.25, close_long = -0.5, close_short = 0.75):
@@ -280,66 +173,6 @@ def scores_to_returns(y, open_long = -1.4, open_short = 1.05, close_long = -0.5,
     x.name = coin
     return x
 
-def build_s_score(a, b, resid_var, PCA_window):
-    '''
-    computes the s-score for a coin on a given day
-    :param a: 1st param - constant term from OU regression
-    :param b: 2nd param - coefficient on AR term from OU regression
-    :param resid_var: variance of residuals from OU regression
-    :return: s_score
-    '''
-    if b > 0.9672:
-        # print ('Mean reversion too slow relative to estimation window')
-        pass
-    k = -np.log(b)*365
-
-    m = a/(1-b)
-    sigma = np.sqrt((resid_var*2*k)/(1-b**2))
-    sigma_v2 = sigma/np.sqrt(2*k)
-    sigma_eq = np.sqrt(resid_var/(1-b**2))
-    s = -m/sigma_eq
-    return m, sigma_eq
-
-def retrieve_s_score(x):
-    '''
-
-    :param x: a iterable containing [eig_returns, coin_ret, date, regression_window, PCA_window]
-    :return: corresponding s-score
-    '''
-    eig_returns = x[0]
-    coin_ret = x[1]
-    date = x[2]
-    regression_window = x[3]
-    PCA_window = x[4]
-    alpha, Xt = regress_pcafactors(eig_returns, coin_ret, date, regression_window)
-    a, b, resid_var = regress_OUprocess(Xt)
-    m, sigma_eq = build_s_score(a, b, resid_var, PCA_window)
-    return m, sigma_eq
-
-# def backtest(PCA_window, regression_window, sample_window, PCS, returns, active, startdate, pc_interval):
-#     storage = {}
-#     pool = Pool(os.cpu_count())
-#     # Iterate over the sample period and get s scores:
-#     for i in range(sample_window+1):
-#         date = startdate + timedelta(days=i)
-#         # Recompute eigenportfolios every 60 days
-#         if i%pc_interval == 0:
-#             eigportfolios, eigvals= do_pca(date, returns, PCA_window, PCS, active) #Recompute eigenportfolios every 60 days
-#         eig_returns = get_eigenportfolio_returns(eigportfolios, eigvals, returns, active, date)
-#         pool_input = []
-#         for coin in active:
-#             if i == 0:
-#                 storage[coin] = []
-#             pool_input.append((eig_returns, returns[coin],date,regression_window,PCA_window))
-#         out = pool.map(retrieve_s_score,pool_input) #a list of tuples, with m and sigma_eq
-#         all_m = [i[0] for i in out if i!=0]
-#         all_sigmas = [y[1] for y in out]
-#         avg_m = np.sum(all_m)/len(all_m)
-#         modified_m = [s_score[0] - avg_m for s_score in out]
-#         adjusted_s_scores = [-m/sigma for m,sigma in zip(modified_m, all_sigmas)]
-#         for count, coin in enumerate(active):
-#             storage[coin].append(adjusted_s_scores[count])
-#     return storage
 
 def get_PnL(results, plot = False):
     ''''''
@@ -411,7 +244,7 @@ if __name__ == "__main__":
     # Generate a dataframe with returns
     returns = prices_df.pct_change()
     returns.index.name = 'Date'
-    print(returns.shape)
+    
     # ========= PARAMETERS ============
     PCA_window = 160
     regression_window = 50
@@ -423,11 +256,11 @@ if __name__ == "__main__":
     startdate = datetime(2018,1,1) # Choose the time period of the sample
     sample = make_sample(returns, volumes_df, startdate, volume, sample_window, PCA_window)                
 
+
     eigen_portfolios, eigen_vals = do_pca(startdate, sample, PCA_window, PCS)
     eig_returns = get_eigenportfolio_returns(datetime(2019,1,1), sample, eigen_portfolios, eigen_vals, PCS)
 
     output = backtest(PCA_window, regression_window, sample_window, PCS, sample, startdate, pc_interval)
-
     print(output)
 
     # plot_portfolio_composition(r"C:\Users\Bing\Documents\NumTech Ass 2\S-score results\In sample\160 50 5 S_scores.csv")

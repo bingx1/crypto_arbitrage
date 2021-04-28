@@ -6,7 +6,7 @@ from sklearn.preprocessing import StandardScaler
 from logger import Logger
 import statsmodels.api as sm
 from multiprocessing import Pool
-import os
+import os, time
 
 logger = Logger("master")
 # ================= ANALYSIS OF THE SAMPLE ============================
@@ -161,11 +161,12 @@ def build_s_score(a, b, resid_var):
 def backtest(pca_window, regression_window, window_size, n_pcs, sample, startdate, recompute_interval):
     '''
     Called to run the strategy on a specific window of data with the passed parameters.
-    Returns a dictionary, where the keys are cryptocurrency TICKERS, and the values are a list of s-scores (to be used as trading signals) over the window.
+    Returns a dataframe containing the s-scores (to be used as trading signals) for each cryptocurrency over the window 
     '''
     output = {}
     pool = Pool(os.cpu_count())
-    logger.log(f"BACKTESTING - Starting backtest on {window_size} period beginning from {startdate.date()}.")
+    start_time = time.time()
+    logger.log(f"BACKTESTING - Starting backtest at {time.asctime()} on {window_size}-day period beginning from {startdate.date()}.")
     logger.log(f"BACKTESTING - [Parameters] PCA Window: {pca_window}, Regression Window: {regression_window}.")
     logger.log(f"BACKTESTING - Recomputing eigenportfolios every {recompute_interval} days.")
 
@@ -197,4 +198,10 @@ def backtest(pca_window, regression_window, window_size, n_pcs, sample, startdat
                              sigma in zip(modified_m, all_sigmas)]
         for count, coin in enumerate(sample.columns):
             output[coin].append(adjusted_s_scores[count])
-    return output
+
+    logger.log(f"BACKTESTING - Completed back test. Took {time.time() - start_time}")
+    end_date = startdate + timedelta(days=window_size)
+    dates = pd.date_range(start=startdate, end=end_date)
+    output_df = pd.DataFrame.from_dict(output)
+    output_df.index = dates
+    return output_df
