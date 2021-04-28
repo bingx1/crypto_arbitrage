@@ -5,14 +5,18 @@ import matplotlib.dates as mdates
 from datetime import datetime
 from collections import Counter
 
-def plot_timeline(dates, symbols, title):
+def plot_timeline(ico_dates: dict):
+ 
+ dates = [np.datetime64(date) for date in ico_dates.values()]
+ symbols = ico_dates.keys()
+ 
  # Choose some nice levels
  levels = np.tile([-11,11,-9,9,-6, 6, -3, 3, -1, 1],
                   int(np.ceil(len(dates) / 10)))[:len(dates)]
  # Create figure and plot a stem plot with the date
  fig, ax = plt.subplots(figsize=(8.8, 4), constrained_layout=True)
  # ax.set(title=title,fontsize=25)
- fig.suptitle(t=title,fontsize=15)
+ fig.suptitle(t="Cryptocurrency ICO Timeline",fontsize=15)
  markerline, stemline, baseline = ax.stem(dates, levels, linefmt="g-", basefmt="k-")
  plt.setp(markerline, mec="k", mfc="w", zorder=3)
  # Shift the markers to the baseline by replacing the y-data by zeros.

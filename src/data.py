@@ -448,9 +448,9 @@ if __name__ == "__main__":
     print(prices_df.index.name)
     # print(prices_df, volumes_df)
     to_plot = ['BTC','DOGE','DASH','ETH']
-    plotting.plot_cryptos(prices_df, to_plot)
-    plotting.plot_launches_per_year(ico_dates, prices_df)
-
+    # plotting.plot_cryptos(prices_df, to_plot)
+    # plotting.plot_launches_per_year(ico_dates, prices_df)
+    plotting.plot_timeline(ico_dates)
     # counter = Counter([date[:4] for date in ico_dates.values()])
     # print(counter)
     # print(prices_df.loc[prices_df['XRP'].isna() == False, 'XRP'])
